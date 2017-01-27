@@ -4,3 +4,5 @@ version = "0.1.0"
 authors = ["Tom Midson <tm@docketbook.io>"]
 
 [dependencies]
+
+bitflags = "0.7.0"
