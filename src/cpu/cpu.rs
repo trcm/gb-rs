@@ -103,6 +103,7 @@ impl CPU {
     fn parse_opcode(&mut self) {
         match self.opcode {
             0x0C => { // INC C
+                println!("INC C");
                 self.c += 1;
                 if self.half_carry(self.c, 1) {
                     println!("INC C HALF CARRY");
@@ -112,10 +113,17 @@ impl CPU {
                 self.pc += 1;
             },
             0xaf => { // XOR A set Z
+                println!("XOR A");
                 self.a ^= self.a;
                 self.f = 0b10000000;
                 self.pc += 1;
 
+            },
+            0x11 => {
+                println!("LD DE, d16");
+                self.d = self.read_byte(2);
+                self.e = self.read_byte(1);
+                self.pc += 3;
             },
             0x20 => { // JR NZ 
                 let mut location = LittleEndian::read_int(&[self.boot[(self.pc + 1) as usize]], 1);
@@ -170,8 +178,10 @@ impl CPU {
                 println!("HERE");
                 self.pc += 2;
             },
-            0xE0 => {
-
+            0xE0 => { // LDH ($FF00 + n), A - load A into 0xFF00 + d8
+                let val: u8 = self.read_byte(1);
+                self.memory.load_value_u8((0xFF00 + val) as usize, self.a);
+                self.pc += 2;
             },
             0xE2 => { // LD (0xFF00+C), A load A into location 0xFF00 + self.c
                 let location = 0xFF00 + self.c as u16;
