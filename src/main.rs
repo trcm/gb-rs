@@ -1,7 +1,11 @@
 #[macro_use]
 extern crate bitflags;
+extern crate byteorder;
+
 use std::io::prelude::*;
 use std::fs::File;
+use std::path::Path;
+use std::str::FromStr;
 
 mod cpu;
 
@@ -9,16 +13,20 @@ use cpu::cpu::CPU;
 // use mem::MMU;
 
 fn main() {
-    
-    
-    let boot = match File::open("../roms/BOOT.bin") {
+
+    let boot_path: String = match std::env::args().nth(1) {
+        Some(p) => p,
+        None => String::from_str("./roms/BOOT.bin").unwrap()
+    };
+    println!("boot parth {}", boot_path);
+    let boot = match File::open(boot_path) {
         Ok(f) => f,
-        Err(e) => panic!("Could not read boot file")
+        Err(e) => panic!("Could not read boot file, {}", e)
     };
     println!("Hello, world!");
 
     //load boot rom
-    
+
     let mut cpu = CPU::new();
     let mut count = 0;
     for byte in boot.bytes() {
@@ -26,10 +34,9 @@ fn main() {
         count += 1;
     }
     // cpu.print_boot();
-    cpu.cycle();
-    cpu.cycle();
-    cpu.cycle();
-    cpu.cycle();
+    while(true) {
+        cpu.cycle();
+    }
     
     println!("{:?}", cpu);
 }

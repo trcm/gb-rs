@@ -12,7 +12,7 @@ impl MMU {
 
     pub fn load_value_u8(&mut self, location: usize, value: u8) {
         self.boot[location] = value;
-        println!("Loaded\n Value: {:X} Location: {:X}, value: {:X}", value, location, self.boot[location]);
+        // println!("Loaded\n Value: {:X} Location: {:X}, value: {:X}", value, location, self.boot[location]);
     }
 
     pub fn load_value_u16(&mut self, location: usize, value: u16) {

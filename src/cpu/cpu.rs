@@ -1,3 +1,5 @@
+use byteorder::{ByteOrder, BigEndian, LittleEndian};
+
 use std::fmt;
 use cpu::mem::MMU;
 const BOOT_SIZE: u16 = 256;
@@ -26,13 +28,14 @@ pub struct CPU {
 
 impl fmt::Debug for CPU {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "A: {:X}\nB: {:X}\nC: {:X}\nH: {:X}\nL: {:X}\nSP: {:X}\nPC: {:X}", self.a, self.b, self.c, self.h, self.l, self.sp, self.pc)
+        write!(f, "A: {:X}\nB: {:X}\nC: {:X}\nH: {:X}\nL: {:X}\nSP: {:X} PC: {:X}\nFlags: Z {:X} N {:X} H {:X} C {:X}",
+               self.a, self.b, self.c, self.h, self.l, self.sp, self.pc, self.Z, self.N, self.H, self.C)
     }
 }
 
 impl CPU {
     pub fn new() -> CPU {
-        let mut cpu = CPU {
+        let cpu = CPU {
             a: 0x0,
             f: 0x0,
             b: 0x0,
@@ -57,21 +60,27 @@ impl CPU {
     }
 
     pub fn cycle(&mut self) {
-        println!("Cycle");
-        println!("{:X}", self.opcode);
         self.get_opcode();
         self.parse_opcode();
     }
     
-    pub fn print_boot(&self) {
-        println!("Boot Rom");
-        for i in 0..BOOT_SIZE {
-            println!("{:X}", self.boot[i as usize]);
-        }
-    }
+    // pub fn print_boot(&self) {
+    //     println!("Boot Rom");
+    //     for i in 0..BOOT_SIZE {
+    //         println!("{:X}", self.boot[i as usize]);
+    //     }
+    // }
 
     pub fn get_opcode(&mut self) {
+        println!("Mem loc: {:X}", self.pc);
         self.opcode = self.boot[self.pc as usize];
+        println!("Opcode {:X}", self.opcode);
+    }
+
+    pub fn get_opcode_big(&mut self) {
+        let temp = self.boot[self.pc as usize];
+        let upper = (temp >> 4) as u8;
+        // println!("upper {:X}", upper);
     }
     
     pub fn read_word(&self) -> u16 {
@@ -85,17 +94,42 @@ impl CPU {
         self.boot[(self.pc + count) as usize]
     }
 
+    fn half_carry(&self, initial: u8, value: u8) -> bool {
+        let a = initial & 0xF;
+        let b = value & 0xF;
+        return (a + b) & 0x10 == 0x10;
+    }
+    
     fn parse_opcode(&mut self) {
         match self.opcode {
+            0x0C => { // INC C
+                self.c += 1;
+                if self.half_carry(self.c, 1) {
+                    println!("INC C HALF CARRY");
+                    self.H = 1;
+                }
+                self.N = 0;
+                self.pc += 1;
+            },
             0xaf => { // XOR A set Z
                 self.a ^= self.a;
                 self.f = 0b10000000;
                 self.pc += 1;
 
-            }
+            },
+            0x20 => { // JR NZ 
+                let mut location = LittleEndian::read_int(&[self.boot[(self.pc + 1) as usize]], 1);
+                if self.Z == 1 {
+                    location  = (((self.pc + 2) as i32) + (((location as u8) as i8) as i32)) as i64;
+                    self.pc = location as u16;
+                } else {
+                    self.pc += 2;
+                }
+            },
             0x21 => { // LD HL, $aabb
                 self.h = self.read_byte(2);
                 self.l = self.read_byte(1);
+                // println!("H {:X} L {:X}", self.h, self.l);
                 self.pc += 3;
             },
             0x31 => { // LD SP, $aabb
@@ -107,22 +141,69 @@ impl CPU {
                 // load the value in A into memory location HL, then decremement HL
 
                 // construct memory loation from HL
-                println!("H {:X}, L {:X}", self.h, self.l);
+                // println!("H {:X}, L {:X}", self.h, self.l);
 
                 let mut location = (self.h as u16) << 8 | (self.l as u16);
-                println!("loocation {:X}", location);
+                // println!("loocation {:X}", location);
                 self.memory.load_value_u8(location as usize, self.a);
-                
-                // location = location - 1;
-                // let newH = location >> 4;
-                
-                self.pc += 1;
 
+                // decrement HL
+                let hl = location.wrapping_sub(1);
+                // println!("HL {:X} decrement {:X}", HL, HL - 1);
+                self.h = (hl >> 8) as u8;
+                self.l = (hl & 0xFF) as u8;
+                println!("hl {:X}", hl);
+                self.pc += 1;
+            },
+            0x3E => { // ld 
+                let val: u8 = self.read_byte(1);
+                self.a = val;
+                self.pc += 2;
             }
+            0xCB => {
+                self.pc += 1;
+                self.redirect();
+            },
+            0x0E => { // LD C, d8
+                let val: u8 = self.read_byte(1);
+                self.c = val;
+                println!("HERE");
+                self.pc += 2;
+            },
+            0xE0 => {
+
+            },
+            0xE2 => { // LD (0xFF00+C), A load A into location 0xFF00 + self.c
+                let location = 0xFF00 + self.c as u16;
+                self.memory.load_value_u8(location as usize, self.c);
+                self.pc += 1;
+            },
+            0x77 => { // LD (HL-), A - load A into the address at HL, decrement HL
+                println!("77");
+                self.pc += 1;
+            },
             _ => panic!("Not implemented. Opcode: {:X}", self.opcode)
         }
-        
     }
 
+    fn redirect(&mut self) {
+        self.get_opcode();
+        // println!("Redirect {:X}", self.opcode);
+        match self.opcode {
+            0x7C => { // BIT 7, H, 2 8, Z 0 1
+                // println!("7C");
+                // println!("compare bit 7 of H");
+                let comp = 0b10000000 & self.h;
+                println!("comp {:b}", comp);
+                if comp == 0 {
+                    self.Z = 0;
+                } else {
+                    self.Z = 1;
+                }
+                self.pc += 1;
+            },
+            _ => panic!("Not Implemented Redirect. Opcode: {:X}", self.opcode)
+        }
+    }
     
 }

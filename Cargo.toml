@@ -6,3 +6,4 @@ authors = ["Tom Midson <tm@docketbook.io>"]
 [dependencies]
 
 bitflags = "0.7.0"
+byteorder = "1"
