@@ -7,3 +7,5 @@ authors = ["Tom Midson <tm@docketbook.io>"]
 
 bitflags = "0.7.0"
 byteorder = "1"
+sdl2 = "0.13"
+rand = "0.3"

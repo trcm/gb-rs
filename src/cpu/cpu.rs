@@ -2,6 +2,7 @@ use byteorder::{ByteOrder, BigEndian, LittleEndian};
 
 use std::fmt;
 use cpu::mem::MMU;
+
 const BOOT_SIZE: u16 = 256;
 
 pub struct CPU {
@@ -18,11 +19,13 @@ pub struct CPU {
     H: u8, // set if a carry occurs from the lower nibble
     C: u8, // set if if carry occued in the last math op or if registare A is smaller in CP instruction
     sp: u16,
-    pc: u16,
+    pub pc: u16,
     opcode: u8,
     word: u16,
     byte: u8,
     memory: MMU,
+    mClock: u16,
+    tClock: u16,
     pub boot: [u8; 256], // boot rom
 }
 
@@ -50,18 +53,22 @@ impl CPU {
             C: 0x0,
             sp: 0,
             pc: 0,
+            mClock: 0,
+            tClock: 0,
             opcode: 0x0,
             word: 0x0,
             byte: 0x0,
             memory: MMU::new(),
             boot: [0; 256],
         };
+
         cpu
     }
 
-    pub fn cycle(&mut self) {
+    pub fn cycle(&mut self) -> u8 {
         self.get_opcode();
         self.parse_opcode();
+        return 0;
     }
     
     // pub fn print_boot(&self) {
@@ -98,6 +105,16 @@ impl CPU {
         let a = initial & 0xF;
         let b = value & 0xF;
         return (a + b) & 0x10 == 0x10;
+    }
+
+    pub fn updateTimers(&mut self, cycles: u8) {
+        println!("timers");
+    }
+    pub fn renderScreen(&mut self, cycles: u8) {
+        println!("screen");
+    }
+    pub fn interrupts(&mut self, cycles: u8) {
+        println!("interrups");
     }
     
     fn parse_opcode(&mut self) {
