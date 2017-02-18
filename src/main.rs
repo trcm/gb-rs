@@ -34,10 +34,6 @@ fn main() {
     let mut debug: bool = true;
     let mut cpu = CPU::new(boot);
     let mut count = 0;
-    // for byte in boot.bytes() {
-    //     cpu.boot[count] = byte.unwrap();
-    //     count += 1;
-    // }
 
     let sdl_context = sdl2::init().unwrap();
     let video = sdl_context.video().unwrap();
@@ -100,8 +96,12 @@ fn main() {
                         debug = !debug;
                         break;
                     },
-                    Actions::EXIT => {exit (0);},
-                    Actions::STEP => {cpu.cycle ();},
+                    Actions::EXIT => {
+                        exit(0);
+                    },
+                    Actions::STEP => {
+                        cpu.cycle ();
+                    },
                     Actions::NOOP => (),
                 };
             }

@@ -40,6 +40,10 @@ impl Debug {
         let mut line_count = 0;
         while line_count < 20 {
             match cpu.memory.read_value_u8( pc ){
+                0x05 => {
+                    println!("0x{:02X}\tDEC B", pc);
+                    pc += 1;
+                }
                 0x06 => {
                     println!("0x{:02X}\tLD B, 0x{:02X}", pc, cpu.memory.read_value_u8( pc + 1 ));
                     pc += 2;
@@ -56,6 +60,10 @@ impl Debug {
                     println!("0x{:02X}\tLD DE, 0x{:02X}{:X}", pc, cpu.memory.read_value_u8( pc + 2 ), cpu.memory.read_value_u8( pc + 1 ));
                     pc += 3;
                 },
+                0x17 => {
+                    println!("0x{:02X}\t RLA", pc);
+                    pc += 1;
+                }
                 0x1A => {
                     println!("0x{:02X}\tLD A, (DE)", pc);
                     pc += 1;
@@ -95,8 +103,17 @@ impl Debug {
                     println!("0x{:02X}\tXOR A", pc);
                     pc += 1;
                 },
+                0xC1 => {
+                    println!("0x{:02X}\tPOP BC", pc);
+                    pc += 1;
+                },
+                0xC5 =>  {
+                    println!("0x{:02X}\tPUSH BC", pc);
+                    pc += 1;
+                },
                 0xCB => { // redirect 
                     match cpu.memory.read_value_u8( pc + 1 ) {
+                        0x11 => println!("0x{:02X}\tRL C", pc + 1),
                         0x7C => println!("0x{:02X}\tBIT 7, H", pc + 1),
                         _ =>  println!("Not disassembled redirect 0x{:02X}", pc + 1),
                     };
@@ -135,9 +152,10 @@ impl Debug {
             "c" => return Actions::BREAK,
             "continue" => return Actions::BREAK,
             "b" => {
-                // set a breakpoint
+                // set a breakpoint, assume numbers are in hex format
                 if split.len() > 1 {
-                    let loc: u16 = split[1].parse().unwrap();
+                    // let loc: u16 = split[1].parse().unwrap();
+                    let loc: u16 = u16::from_str_radix(split[1], 16).unwrap();
                     self.set_breakpoint(loc);
                 }
                 return Actions::NOOP;

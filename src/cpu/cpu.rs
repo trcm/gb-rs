@@ -107,12 +107,18 @@ impl CPU {
         self.memory.read_value_u8( (self.pc + count) as usize )
     }
 
-    fn half_carry(&self, initial: u8, value: u8) -> bool {
+    fn half_carry_add(&self, initial: u8, value: u8) -> bool {
         let a = initial & 0xF;
         let b = value & 0xF;
         return (a + b) & 0x10 == 0x10;
     }
 
+    fn half_carry_sub(&self, initial: u8, value: u8) -> bool {
+        let a = initial & 0xF;
+        let b = value & 0xF;
+        return (a - b) & 0x10 == 0x10;
+    }
+    
     fn step(&mut self) { // move the timers forward
         // update the m clock one cycle
         // update t clock 4 cycles
@@ -170,6 +176,20 @@ impl CPU {
     
     fn parse_opcode(&mut self) {
         match self.opcode {
+            0x05 => { // DEC B 
+                if self.half_carry_sub(self.b, 1) {
+                    self.H = 1;
+                }
+                self.b = self.b.wrapping_sub(0);
+
+                if self.b == 0 {
+                    self.Z = 1;
+                }
+                
+                self.N = 1; // 
+                self.pc += 1;
+                self.step();
+            },
             0x06 => { // LD b, d8
                 let value = self.memory.read_value_u8((self.pc + 1) as usize);
                 self.b = value;
@@ -180,7 +200,7 @@ impl CPU {
             0x0C => { // INC C
                 println!("INC C");
                 self.c += 1;
-                if self.half_carry(self.c, 1) {
+                if self.half_carry_add(self.c, 1) {
                     println!("INC C HALF CARRY");
                     self.H = 1;
                 }
@@ -274,13 +294,22 @@ impl CPU {
             0x4F => { // LD C, A
                 self.c = self.a;
                 self.pc += 1;
+            }, 
+            0xC1 => { // POP BC
+                self.b = self.memory.read_value_u8((self.sp + 1) as usize);
+                self.c = self.memory.read_value_u8(self.sp as usize);
+                self.sp += 2;
+                self.pc += 1;
+                self.step();
+                self.step();
+                self.step();
             },
             0xC5 => { // PUSH BC push b then c onto the stack
                 self.step();
                 self.sp -= 2;
                 self.memory.load_value_u8((self.sp + 1) as usize, self.b);
                 self.memory.load_value_u8(self.sp as usize, self.c);
-                    self.pc += 1;
+                self.pc += 1;
             },
             0xCD => { // call nn
                 // push current location onto the stack
@@ -310,7 +339,10 @@ impl CPU {
                 println!("77");
                 self.pc += 1;
             },
-            _ => panic!("Not implemented. Opcode: {:X}", self.opcode)
+            _ => {
+                println!("Not implemented. Opcode: 0x{:02X} Mem: 0x{:02X}", self.opcode, self.pc);
+                panic!();
+            }
         }
     }
 
