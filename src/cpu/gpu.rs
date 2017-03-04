@@ -4,7 +4,7 @@ pub struct GPU {
 
 impl GPU {
     pub fn new() -> GPU {
-        let mut gpu = GPU {
+        let gpu = GPU {
             status: false
         };
         gpu

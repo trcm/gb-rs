@@ -1,4 +1,4 @@
-use byteorder::{ByteOrder, BigEndian, LittleEndian};
+use byteorder::{ByteOrder, LittleEndian};
 use cpu::cpu::CPU;
 
 pub struct Debug {
@@ -15,7 +15,7 @@ pub enum Actions  {
 
 impl Debug {
     pub fn new() -> Debug {
-        let mut debugger = Debug {
+        let debugger = Debug {
             location: 0,
             breakpoints: Vec::new(),
         };

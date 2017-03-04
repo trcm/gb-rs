@@ -6,7 +6,7 @@ macro_rules! store_reg (($c:expr; $reg:ident; $value:expr) => {
 // Store 16 bit value in regs
 macro_rules! store_reg16 (($c:expr; $reg1:ident, $reg2:ident; $value:expr) => {
     let lower = ($value & 0xFF) as u8;
-    let upper = ($value >> 8) as u8
+    let upper = ($value >> 8) as u8;
     $c.$reg1 = upper;
     $c.$reg2 = lower;
 });

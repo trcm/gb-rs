@@ -6,7 +6,6 @@ use std::io::prelude::*;
 use std::io::{stdin, stdout};
 use std::process::exit;
 use std::fs::File;
-use std::path::Path;
 use std::str::FromStr;
 
 mod cpu;
@@ -32,7 +31,6 @@ fn main() {
     //load boot rom
     let mut debug: bool = true;
     let mut cpu = CPU::new(boot);
-    let mut count = 0;
 
     let sdl_context = sdl2::init().unwrap();
     let video = sdl_context.video().unwrap();
@@ -41,7 +39,7 @@ fn main() {
         .position_centered()
         .build()
         .unwrap();
-    let mut renderer = _window.renderer().build().unwrap();
+
     let mut debugger = Debug::new();
     if debug {
         debugger.print_status(&cpu);
@@ -87,7 +85,7 @@ fn main() {
         } else {
             'debug: loop {
                 print!("> ");
-                stdout().flush();
+                let _ = stdout().flush();
                 let mut input = String::new();
                 stdin().read_line(&mut input).expect("Input invalid");
                 match debugger.parse_input(input.trim(), &cpu) {
@@ -107,6 +105,5 @@ fn main() {
         }
     }
     
-    println!("{:?}", cpu);
 }
 

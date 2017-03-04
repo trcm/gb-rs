@@ -276,11 +276,10 @@ impl CPU {
             },
             Opcode::LdHLDECA => { // LD (HL-), A
                 // load the value in A into memory location HL, then decremement HL
-
                 // construct memory loation from HL
                 // println!("H {:X}, L {:X}", self.h, self.l);
 
-                let mut location = (self.h as u16) << 8 | (self.l as u16);
+                let location = (self.h as u16) << 8 | (self.l as u16);
                 // println!("loocation {:X}", location);
                 self.memory.load_value_u8(location as usize, self.a);
 
@@ -295,7 +294,7 @@ impl CPU {
             },
             Opcode::LdHLADDA => {
 
-                let mut location = (self.h as u16) << 8 | (self.l as u16);
+                let location = (self.h as u16) << 8 | (self.l as u16);
                 // println!("loocation {:X}", location);
                 self.memory.load_value_u8(location as usize, self.a);
 
@@ -310,7 +309,7 @@ impl CPU {
 
             },
             Opcode::IncHL => {
-                let mut location = (self.h as u16) << 8 | (self.l as u16);
+                let location = (self.h as u16) << 8 | (self.l as u16);
                 let hl = location.wrapping_add(1);
                 self.h = (hl >> 8) as u8;
                 self.l = (hl & 0xFF) as u8;

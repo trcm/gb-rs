@@ -15,7 +15,6 @@ const OPCODE_LD_HL_ADD_A: u8 = 0x22;
 const OPCODE_INC_HL: u8      = 0x23;
 const OPCODE_LD_A: u8        = 0x3E;
 const OPCODE_XOR_A: u8       = 0xAF;
-const OPCODE_REDIRECT: u8    = 0xCB;
 const OPCODE_LD_C_A: u8      = 0x4F;
 const OPCODE_POP_BC: u8      = 0xC1;
 const OPCODE_PUSH_BC: u8     = 0xC5;
