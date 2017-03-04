@@ -133,11 +133,10 @@ impl CPU {
         // update timers
 
         // update display
-        self.renderScreen();
+        self.render_screen();
     }
     
-    pub fn updateTimers(&mut self, cycles: u8) {
-        // println!("timers");
+    pub fn update_timers(&mut self) {
     }
 
     // 0xFF40 - LCD Control Register
@@ -160,15 +159,14 @@ impl CPU {
     // 1: V blank
     // 2: Searching OAM
     // 3: Transfer data to lcd
-    pub fn renderScreen(&self) {
-
+    pub fn render_screen(&self) {
         // check 0xFF40
         if (self.memory.read_value_u8(0x0FF40) & 0b1000000) != 0 {
             println!("SCREEN ON!!!!!");
             panic!("SCREEN ON");
         }
     }
-    pub fn interrupts(&mut self, cycles: u8) {
+    pub fn interrupts(&mut self) {
         if self.ime != 0 {
             println!("INTERRUPT TRIGGERED!!!!!!");
         }

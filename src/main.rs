@@ -79,8 +79,8 @@ fn main() {
                 debug = !debug;
             } else {
                 let cycles = cpu.cycle();
-                cpu.updateTimers(cycles);
-                cpu.interrupts(cycles);
+                cpu.update_timers();
+                cpu.interrupts();
             }
         } else {
             'debug: loop {
