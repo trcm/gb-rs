@@ -197,7 +197,8 @@ impl CPU {
             Opcode::LdB => {
             // 0x06 => { // LD b, d8
                 let value = self.memory.read_value_u8((self.pc + 1) as usize);
-                self.b = value;
+                store_reg!(self; b; value);
+                // self.b = value;
                 self.pc += 2;
                 self.step();
                 self.step();
@@ -209,11 +210,19 @@ impl CPU {
                     println!("INC C HALF CARRY");
                     self.H = 1;
                 }
-                if self.c == 0 {
+                if self.c & 0xFF == 0 {
                     self.Z = 1;
                 }
                 self.N = 0;
                 self.pc += 1;
+            },
+            Opcode::IncDE => { // INC DE
+                let value = inc_reg16!(self; d, e);
+                self.d = (value >> 8) as u8;
+                self.e = (value & 0xFF) as u8;
+                self.pc += 1;
+                self.step();
+                self.step();
             },
             Opcode::LdDE => {
                 println!("LD DE, d16");
@@ -248,8 +257,9 @@ impl CPU {
                 }
             },
             Opcode::LdHL => { // LD HL, $aabb
-                self.h = self.read_byte(2);
-                self.l = self.read_byte(1);
+                store_reg16!(self; h, l; self.read_word());
+                // self.h = self.read_byte(2);
+                // self.l = self.read_byte(1);
                 // println!("H {:X} L {:X}", self.h, self.l);
                 self.pc += 3;
                 self.step();

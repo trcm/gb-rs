@@ -3,6 +3,7 @@ use std::fmt;
 const OPCODE_DEC_B: u8       = 0x05;
 const OPCODE_LD_B: u8        = 0x06;
 const OPCODE_INC_C: u8       = 0x0C;
+const OPCODE_INC_DE: u8      = 0x13;
 const OPCODE_LD_DE: u8       = 0x11;
 const OPCODE_RLA: u8         = 0x17;
 const OPCODE_LD_A_DE: u8     = 0x1A;
@@ -34,6 +35,7 @@ pub enum Opcode {
     DecB,
     LdB,
     IncC,
+    IncDE,
     LdDE,
     RLA,
     LdADE,
@@ -73,6 +75,7 @@ impl Opcode {
             OPCODE_LD_HL_DEC_A => Opcode::LdHLDECA,
             OPCODE_LD_HL_ADD_A => Opcode::LdHLADDA,
             OPCODE_INC_HL      => Opcode::IncHL,
+            OPCODE_INC_DE      => Opcode::IncDE,
             OPCODE_LD_A        => Opcode::LdA,
             OPCODE_XOR_A       => Opcode::XORA,
             OPCODE_LD_C_A      => Opcode::LdCA,
@@ -115,6 +118,7 @@ impl fmt::Display for Opcode {
             &Opcode::LdHLDECA => "LD (HL-), A",
             &Opcode::LdHLADDA => "LD (HL+), A",
             &Opcode::IncHL    => "INC HL",
+            &Opcode::IncDE    => "INC DE",
             &Opcode::LdA      => "LD A, d8",
             &Opcode::XORA     => "XOR A",
             &Opcode::LdCA     => "LD C, A",
