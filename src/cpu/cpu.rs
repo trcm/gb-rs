@@ -4,6 +4,7 @@ use std::fs::File;
 use std::fmt;
 use cpu::mem::MMU;
 use cpu::gpu::GPU;
+use cpu::op::Opcode;
 
 const BOOT_SIZE: u16 = 256;
 
@@ -87,7 +88,7 @@ impl CPU {
         // println!("Mem loc: {:#X}", self.pc);
         // self.opcode = self.boot[self.pc as usize];
         self.opcode = self.memory.read_value_u8(self.pc as usize);
-        println!("Opcode {:02X}", self.opcode);
+        // println!("Opcode {:02X}", self.opcode);
     }
 
     pub fn get_opcode_big(&mut self) {
@@ -116,7 +117,7 @@ impl CPU {
     fn half_carry_sub(&self, initial: u8, value: u8) -> bool {
         let a = initial & 0xF;
         let b = value & 0xF;
-        return (a - b) & 0x10 == 0x10;
+        return (a.wrapping_sub(b)) & 0x10 == 0x10;
     }
     
     fn step(&mut self) { // move the timers forward
@@ -136,7 +137,7 @@ impl CPU {
     }
     
     pub fn updateTimers(&mut self, cycles: u8) {
-        println!("timers");
+        // println!("timers");
     }
 
     // 0xFF40 - LCD Control Register
@@ -171,53 +172,61 @@ impl CPU {
         if self.ime != 0 {
             println!("INTERRUPT TRIGGERED!!!!!!");
         }
-        println!("interrups");
+        // println!("interrups");
     }
     
     fn parse_opcode(&mut self) {
-        match self.opcode {
-            0x05 => { // DEC B 
+        println!("PC 0x{:02X}", self.pc);
+        match Opcode::parse(self.opcode) {
+        // match self.opcode {
+            Opcode::DecB => {
+            // 0x05 => { // DEC B 
                 if self.half_carry_sub(self.b, 1) {
                     self.H = 1;
                 }
-                self.b = self.b.wrapping_sub(0);
+                self.b = self.b.wrapping_sub(1);
 
                 if self.b == 0 {
                     self.Z = 1;
                 }
-                
+                println!("{} {}", self.b, self.Z);
                 self.N = 1; // 
                 self.pc += 1;
                 self.step();
             },
-            0x06 => { // LD b, d8
+            Opcode::LdB => {
+            // 0x06 => { // LD b, d8
                 let value = self.memory.read_value_u8((self.pc + 1) as usize);
                 self.b = value;
                 self.pc += 2;
                 self.step();
                 self.step();
             },
-            0x0C => { // INC C
+            Opcode::IncC => { // INC C
                 println!("INC C");
                 self.c += 1;
                 if self.half_carry_add(self.c, 1) {
                     println!("INC C HALF CARRY");
                     self.H = 1;
                 }
+                if self.c == 0 {
+                    self.Z = 1;
+                }
                 self.N = 0;
                 self.pc += 1;
             },
-            0x11 => {
+            Opcode::LdDE => {
                 println!("LD DE, d16");
                 self.d = self.read_byte(2);
                 self.e = self.read_byte(1);
                 self.pc += 3;
             },
-            0x17 => { // RLA rotate A left through carry
+            Opcode::RLA => { // RLA rotate A left through carry
                 let old_value = self.a;
                 self.a = self.rotate_left_carry(&old_value);
+                self.Z = 0;
             },
-            0x1A => { // LD A, (DE)
+            Opcode::LdADE => { // LD A, (DE)
                 println!("LD A, (DE)");
                 let location = (self.d as u16) << 8 | self.e as u16;
                 // self.a = self.memory.read_value_u8( location as usize );
@@ -226,7 +235,7 @@ impl CPU {
                 self.pc += 1;
                 // self.a = ;
             },
-            0x20 => { // JR NZ 
+            Opcode::JRNZ => { // JR NZ 
                 let mut location = LittleEndian::read_int(&[self.memory.read_value_u8( (self.pc + 1) as usize )], 1);
                 if self.Z == 1 {
                     location  = (((self.pc + 2) as i32) + (((location as u8) as i8) as i32)) as i64;
@@ -238,7 +247,7 @@ impl CPU {
                     self.step();
                 }
             },
-            0x21 => { // LD HL, $aabb
+            Opcode::LdHL => { // LD HL, $aabb
                 self.h = self.read_byte(2);
                 self.l = self.read_byte(1);
                 // println!("H {:X} L {:X}", self.h, self.l);
@@ -247,7 +256,7 @@ impl CPU {
                 self.step();
                 self.step();
             },
-            0x31 => { // LD SP, $aabb
+            Opcode::LdSP => { // LD SP, $aabb
                 let val: u16 = self.read_word();
                 self.sp = val;
                 self.pc += 3;
@@ -255,7 +264,7 @@ impl CPU {
                 self.step();
                 self.step();
             },
-            0x32 => { // LD (HL-), A
+            Opcode::LdHLDECA => { // LD (HL-), A
                 // load the value in A into memory location HL, then decremement HL
 
                 // construct memory loation from HL
@@ -270,74 +279,124 @@ impl CPU {
                 // println!("HL {:X} decrement {:X}", HL, HL - 1);
                 self.h = (hl >> 8) as u8;
                 self.l = (hl & 0xFF) as u8;
-                println!("hl {:X}", hl);
                 self.pc += 1;
                 self.step();
                 self.step();
             },
-            0x3E => { // ld 
+            Opcode::LdHLADDA => {
+
+                let mut location = (self.h as u16) << 8 | (self.l as u16);
+                // println!("loocation {:X}", location);
+                self.memory.load_value_u8(location as usize, self.a);
+
+                // decrement HL
+                let hl = location.wrapping_add(1);
+                // println!("HL {:X} decrement {:X}", HL, HL - 1);
+                self.h = (hl >> 8) as u8;
+                self.l = (hl & 0xFF) as u8;
+                self.pc += 1;
+                self.step();
+                self.step();
+
+            },
+            Opcode::IncHL => {
+                let mut location = (self.h as u16) << 8 | (self.l as u16);
+                let hl = location.wrapping_add(1);
+                self.h = (hl >> 8) as u8;
+                self.l = (hl & 0xFF) as u8;
+                self.pc += 1;
+                self.step();
+                self.step();
+            },
+            Opcode::LdA => { // ld a d8
                 let val: u8 = self.read_byte(1);
                 self.a = val;
                 self.pc += 2;
             }
-            0xAF => { // XOR A set Z
+            Opcode::XORA => { // XOR A set Z
                 println!("XOR A");
                 self.a ^= self.a;
                 self.f = 0b10000000;
+                if self.a == 0 {
+                    self.Z = 1;
+                }
                 self.pc += 1;
                 self.step();
             },
-            0xCB => {
+            Opcode::CB => {
                 self.pc += 1;
                 self.redirect();
             },
-            0x4F => { // LD C, A
+            Opcode::LdCA => { // LD C, A
                 self.c = self.a;
                 self.pc += 1;
             }, 
-            0xC1 => { // POP BC
+            Opcode::PopBC => { // POP BC
+
                 self.b = self.memory.read_value_u8((self.sp + 1) as usize);
                 self.c = self.memory.read_value_u8(self.sp as usize);
                 self.sp += 2;
                 self.pc += 1;
+                println!("sp 0x{:02X}", self.sp);
                 self.step();
                 self.step();
                 self.step();
             },
-            0xC5 => { // PUSH BC push b then c onto the stack
+            Opcode::PushBC => { // PUSH BC push b then c onto the stack
                 self.step();
                 self.sp -= 2;
                 self.memory.load_value_u8((self.sp + 1) as usize, self.b);
                 self.memory.load_value_u8(self.sp as usize, self.c);
                 self.pc += 1;
+                println!("sp 0x{:02X}", self.sp);
             },
-            0xCD => { // call nn
-                // push current location onto the stack
-                self.sp -= 1; // decrememnt stack pointer
-                self.memory.load_value_u8(self.sp as usize, (self.pc + 1) as u8); // put the next location on the stack
+            Opcode::CallNN => { // call nn
+                // push next location onto the stack
+                println!("PC 0x{:02X}, NEXT 0x{:02X}, 0x{:02X}", self.pc, self.pc + 3, self.pc + 4);
+                self.sp -= 2; // decrememnt stack pointer
+                self.memory.load_value_u8(self.sp as usize, (self.pc + 3) as u8); // put the next location on the stack
+                // self.memory.load_value_u8(self.sp as usize, (self.pc + 4) as u8); // put the next location on the stack
                 let location: u16 = (self.memory.read_value_u8( (self.pc + 2) as usize ) as u16) << 8 | (self.memory.read_value_u8( (self.pc + 1) as usize ) as u16);
-                println!("location {:#X}", location);
+                println!("location {:#X}, SP {:#X}", location, self.sp);
                 self.pc = location;
-            }
-            0x0E => { // LD C, d8
+                self.step();
+                self.step();
+                self.step();
+            },
+            Opcode::RET => { // RET pop two bytes from the stack
+                let first = self.memory.read_value_u8(self.sp as usize);
+                let second = self.memory.read_value_u8((self.sp + 1) as usize);
+                let location = (second as u16) << 8 | first as u16;
+                println!("sp 0x{:02X} 0x{:02X} 0x{:02X}, 0x{:02X}", self.sp, first, second, location);
+                println!("JUMPING TO 0x{:02X}", first);
+                self.pc = first as u16;
+                self.step();
+                self.step();
+                self.step();
+                self.step();
+            },
+            Opcode::LdC => { // LD C, d8
                 let val: u8 = self.read_byte(1);
                 self.c = val;
                 println!("HERE");
                 self.pc += 2;
             },
-            0xE0 => { // LDH ($FF00 + n), A - load A into 0xFF00 + d8
+            Opcode::LdhA => { // LDH ($FF00 + n), A - load A into 0xFF00 + d8
                 let val: u8 = self.read_byte(1);
-                self.memory.load_value_u8((0xFF00 + val) as usize, self.a);
+                self.memory.load_value_u8((0xFF00 | val as u16) as usize, self.a);
                 self.pc += 2;
             },
-            0xE2 => { // LD (0xFF00+C), A load A into location 0xFF00 + self.c
+            Opcode::LdCADDA => { // LD (0xFF00+C), A load A into location 0xFF00 + self.c
                 let location = 0xFF00 + self.c as u16;
                 self.memory.load_value_u8(location as usize, self.c);
                 self.pc += 1;
             },
-            0x77 => { // LD (HL-), A - load A into the address at HL, decrement HL
-                println!("77");
+            Opcode::LdHLA => { // LD (HL), A - load A into the address at HL 
+                let location = (self.h as u16) << 8 | (self.l as u16);
+                self.memory.load_value_u8(location as usize, self.a);
                 self.pc += 1;
+                self.step();
+                self.step();
             },
             _ => {
                 println!("Not implemented. Opcode: 0x{:02X} Mem: 0x{:02X}", self.opcode, self.pc);
@@ -348,8 +407,8 @@ impl CPU {
 
     fn redirect(&mut self) {
         self.get_opcode();
-        match self.opcode {
-            0x11 => { // RL C
+        match Opcode::redirect(self.opcode){
+            Opcode::CBRLC => { // RL C
                 let old_value = self.c;
                 self.c = self.rotate_left_carry(&old_value);
                 // println!("c {}", self.c);
@@ -367,7 +426,7 @@ impl CPU {
                 // self.H = 0;
                 // self.pc += 1;
             },
-            0x7C => { // BIT 7, H, 2 8, Z 0 1
+            Opcode::CB7C => { // BIT 7, H, 2 8, Z 0 1
                 let comp = 0b10000000 & self.h;
                 if comp == 0 {
                     self.Z = 0;
@@ -384,11 +443,13 @@ impl CPU {
         let reg_value = *reg;
         self.C = (reg_value >> 7) & 0x01;  // save old bit 7 data
         let r = (reg_value << 1) | self.C;
+
         self.Z = if r == 0 {
             1
         } else {
             0
         };
+
         self.step();
         self.step();
 

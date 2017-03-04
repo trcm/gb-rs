@@ -61,7 +61,7 @@ impl Debug {
                     pc += 3;
                 },
                 0x17 => {
-                    println!("0x{:02X}\t RLA", pc);
+                    println!("0x{:02X}\tRLA", pc);
                     pc += 1;
                 }
                 0x1A => {
@@ -78,6 +78,14 @@ impl Debug {
                 0x21 => {
                     println!("0x{:02X}\tLD HL, 0x{:02X}{:X}", pc, cpu.memory.read_value_u8( (pc + 2) as usize ), cpu.memory.read_value_u8( (pc + 1) as usize ));
                     pc += 3;
+                },
+                0x22 => {
+                    println!("0x{:02X}\tLD (HL-), A", pc);
+                    pc += 1;
+                },
+                0x23 => {
+                    println!("0x{:02X}\tINC HL", pc);
+                    pc += 1;
                 },
                 0x31 => {
                     println!("0x{:02X}\tLD SP, 0x{:02X}{:X}", pc, cpu.memory.read_value_u8( (pc + 2) as usize ), cpu.memory.read_value_u8( (pc + 1) as usize ));
@@ -123,6 +131,10 @@ impl Debug {
                     println!("0x{:02X}\tCALL 0x{:02X}{:X}", pc, cpu.memory.read_value_u8( (pc + 2) as usize ), cpu.memory.read_value_u8( (pc + 1) as usize ));
                     pc += 3;
                 },
+                0xC9 => {
+                    println!("0x{:02X}\tRET", pc);
+                    pc += 1;
+                }
                 0xE0 => {
                     println!("0x{:02X}\tLDH ($FF00+0x{:02X}), A", pc, cpu.memory.read_value_u8( pc + 1 ));
                     pc += 2;
