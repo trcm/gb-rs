@@ -13,6 +13,6 @@ the inspiration to write both emulators and get more familiar with Rust.
 # TODO
 
 - [x] Basic Debugger
-- [] Handle all opcodes
-- [] Write more macros to handle common situations
-- [] Refactor code to use the more common Interconnect pattern
+- [ ] Handle all opcodes
+- [ ] Write more macros to handle common situations
+- [ ] Refactor code to use the more common Interconnect pattern
