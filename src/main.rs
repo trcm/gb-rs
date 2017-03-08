@@ -78,7 +78,7 @@ fn main() {
             if debugger.check_breakpoints(cpu.pc) {
                 debug = !debug;
             } else {
-                let cycles = cpu.cycle();
+                cpu.cycle();
                 cpu.update_timers();
                 cpu.interrupts();
             }

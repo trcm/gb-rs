@@ -1,4 +1,4 @@
-use byteorder::{ByteOrder, BigEndian, LittleEndian};
+use byteorder::{ByteOrder, LittleEndian};
 use std::io::prelude::*;
 use std::fs::File;
 use std::fmt;
@@ -6,8 +6,7 @@ use cpu::mem::MMU;
 use cpu::gpu::GPU;
 use cpu::op::Opcode;
 
-const BOOT_SIZE: u16 = 256;
-
+#[allow(non_snake_case)]
 pub struct CPU {
     pub f: u8, // flags
     pub a: u8,
@@ -24,20 +23,18 @@ pub struct CPU {
     sp: u16,
     pub pc: u16,
     opcode: u8,
-    word: u16,
-    byte: u8,
     pub memory: MMU,
     pub gpu: GPU,
-    mClock: u32,
-    tClock: u32,
+    m_clock: u32,
+    t_clock: u32,
     pub boot: [u8; 256], // boot rom
     ime: u8,
 }
 
 impl fmt::Debug for CPU {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "A: {:#X}\nB: {:#X}\nC: {:#X}\nD: {:#X}\nE: {:#X}\nH: {:#X}\nL: {:#X}\nSP: {:#X} PC: {:#X}\nFlags: Z {:#X} N {:#X} H {:#X} C {:#X}\ntClock: {}\tmClock: {}",
-               self.a, self.b, self.c, self.d, self.e, self.h, self.l, self.sp, self.pc, self.Z, self.N, self.H, self.C, self.tClock, self.mClock)
+        write!(f, "A: {:#X}\nB: {:#X}\nC: {:#X}\nD: {:#X}\nE: {:#X}\nH: {:#X}\nL: {:#X}\nSP: {:#X} PC: {:#X}\nFlags: Z {:#X} N {:#X} H {:#X} C {:#X}\nt_clock: {}\tm_clock: {}",
+               self.a, self.b, self.c, self.d, self.e, self.h, self.l, self.sp, self.pc, self.Z, self.N, self.H, self.C, self.t_clock, self.m_clock)
     }
 }
 
@@ -58,11 +55,9 @@ impl CPU {
             C: 0x0,
             sp: 0,
             pc: 0,
-            mClock: 0,
-            tClock: 0,
+            m_clock: 0,
+            t_clock: 0,
             opcode: 0x0,
-            word: 0x0,
-            byte: 0x0,
             memory: MMU::new(),
             gpu: GPU::new(),
             boot: [0; 256],
@@ -91,12 +86,6 @@ impl CPU {
         // println!("Opcode {:02X}", self.opcode);
     }
 
-    pub fn get_opcode_big(&mut self) {
-        let temp = self.boot[self.pc as usize];
-        let upper = (temp >> 4) as u8;
-        // println!("upper {:X}", upper);
-    }
-    
     pub fn read_word(&self) -> u16 {
         let aa: u8 = self.memory.read_value_u8((self.pc + 2) as usize);
         let bb: u8 = self.memory.read_value_u8((self.pc + 1) as usize);
@@ -124,10 +113,10 @@ impl CPU {
         // update the m clock one cycle
         // update t clock 4 cycles
 
-        self.mClock += 1;
+        self.m_clock += 1;
 
         // for _ in 0..4 { // do something more here
-        //     self.tClock += 1;
+        //     self.t_clock += 1;
         // }
         
         // update timers
@@ -174,9 +163,21 @@ impl CPU {
     }
     
     fn parse_opcode(&mut self) {
-        println!("PC 0x{:02X}", self.pc);
-        match Opcode::parse(self.opcode) {
+        match Opcode::parse(self.pc, self.opcode) {
         // match self.opcode {
+            Opcode::DecA => {
+                if self.half_carry_sub(self.a, 1) {
+                    self.H = 1;
+                }
+                self.a = self.a.wrapping_sub(1);
+
+                if self.a == 0 {
+                    self.Z = 1;
+                }
+                self.N = 1; // 
+                self.pc += 1;
+                self.step();
+            }
             Opcode::DecB => {
             // 0x05 => { // DEC B 
                 if self.half_carry_sub(self.b, 1) {
@@ -320,6 +321,11 @@ impl CPU {
                 self.a = val;
                 self.pc += 2;
             }
+            Opcode::LdAE => {
+                load_from_reg!(self; a, e);
+                self.step();
+                self.pc += 1;
+            },
             Opcode::XORA => { // XOR A set Z
                 println!("XOR A");
                 self.a ^= self.a;
@@ -402,6 +408,34 @@ impl CPU {
                 let location = (self.h as u16) << 8 | (self.l as u16);
                 self.memory.load_value_u8(location as usize, self.a);
                 self.pc += 1;
+                self.step();
+                self.step();
+            },
+            Opcode::CpD8 => {
+                let imm = self.memory.read_value_u8((self.pc + 1) as usize);
+                let value = self.a.wrapping_sub(imm);
+
+                if (value & 0xFF) == 0 {
+                    self.Z = 1;
+                }
+                if self.half_carry_sub(value, imm) {
+                    self.C = 1;
+                }
+
+                self.N = 1;
+                println!("CP d8 {:X}, {:X}", self.a, value);
+                self.step();
+                self.step();
+                self.pc += 2;
+
+            },
+            Opcode::Lda16A => { // LD (a16), A
+                let location = self.read_word();
+                self.memory.load_value_u8(location as usize, self.a);
+                self.pc += 3;
+
+                self.step();
+                self.step();
                 self.step();
                 self.step();
             },

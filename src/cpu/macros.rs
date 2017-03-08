@@ -33,3 +33,7 @@ macro_rules! inc_reg16 (($c:expr; $reg1:ident, $reg2:ident) => {
         value
     }
 });
+
+macro_rules! load_from_reg (($c:expr; $dst:ident, $src:ident) => {
+    $c.$dst = $c.$src;
+});

@@ -14,5 +14,6 @@ the inspiration to write both emulators and get more familiar with Rust.
 
 - [x] Basic Debugger
 - [ ] Handle all opcodes
+- [ ] Propery handle memory map
 - [ ] Write more macros to handle common situations
 - [ ] Refactor code to use the more common Interconnect pattern

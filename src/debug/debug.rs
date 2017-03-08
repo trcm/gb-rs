@@ -1,5 +1,6 @@
 use byteorder::{ByteOrder, LittleEndian};
 use cpu::cpu::CPU;
+use cpu::op::Opcode;
 
 pub struct Debug {
     pub location: u16,
@@ -39,6 +40,7 @@ impl Debug {
         let mut pc = cpu.pc as usize;
         let mut line_count = 0;
         while line_count < 20 {
+            println!("{}", Opcode::parse(pc as u16, cpu.memory.read_value_u8(pc)));
             match cpu.memory.read_value_u8( pc ){
                 0x05 => {
                     println!("0x{:02X}\tDEC B", pc);
@@ -64,6 +66,10 @@ impl Debug {
                     println!("0x{:02X}\tRLA", pc);
                     pc += 1;
                 }
+                0x13 => {
+                    println!("0x{:02X}\tINC DE", pc);
+                    pc += 1;
+                },
                 0x1A => {
                     println!("0x{:02X}\tLD A, (DE)", pc);
                     pc += 1;
@@ -80,12 +86,18 @@ impl Debug {
                     pc += 3;
                 },
                 0x22 => {
-                    println!("0x{:02X}\tLD (HL-), A", pc);
+                    println!("0x{:02X}\tLD (HL+), A", pc);
                     pc += 1;
                 },
                 0x23 => {
                     println!("0x{:02X}\tINC HL", pc);
                     pc += 1;
+                },
+                0x28 => {
+                    let mut location = LittleEndian::read_int(&[cpu.memory.read_value_u8( (pc + 1) as usize )], 1);
+                    location  = (((pc + 2) as i32) + (((location as u8) as i8) as i32)) as i64;
+                    println!("0x{:02X}\tJR Z, r8 0x{:04X}", pc, location);
+                    pc += 2;
                 },
                 0x31 => {
                     println!("0x{:02X}\tLD SP, 0x{:02X}{:X}", pc, cpu.memory.read_value_u8( (pc + 2) as usize ), cpu.memory.read_value_u8( (pc + 1) as usize ));
@@ -107,6 +119,10 @@ impl Debug {
                     println!("0x{:02X}\tLD (HL), A", pc);
                     pc += 1;
                 },
+                0x7B => {
+                    println!("0x{:02X}\tLD A, E", pc);
+                    pc += 1;
+                }
                 0xAF => {
                     println!("0x{:02X}\tXOR A", pc);
                     pc += 1;
@@ -143,6 +159,15 @@ impl Debug {
                     println!("0x{:02X}\tLD ($FF00+C), A", pc);
                     pc += 1;
                 },
+                0xEA => {
+                    println!("0x{:02X}\tLD (a16), A", pc);
+                    pc += 3;
+                },
+                0xFE => {
+                    println!("0x{:02X}\tCP d8, (0x{:02X})", pc, cpu.memory.read_value_u8(pc + 1));
+                    pc += 2;
+                    
+                }
                 _ => println!("Not disassembled 0x{:02X}, 0x{:02X}", pc, cpu.memory.read_value_u8( pc )) 
             }
             line_count += 1;
