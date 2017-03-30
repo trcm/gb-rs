@@ -12,6 +12,8 @@ mod cpu;
 mod debug;
 
 use cpu::cpu::CPU;
+use cpu::interconnect::Interconnect;
+use cpu::gb::Gameboy;
 use debug::debug::{Debug, Actions};
 // use mem::MMU;
 
@@ -30,7 +32,8 @@ fn main() {
 
     //load boot rom
     let mut debug: bool = true;
-    let mut cpu = CPU::new(boot);
+    let mut machine = Gameboy::new(boot);
+    // let mut cpu = CPU::new(boot);
 
     let sdl_context = sdl2::init().unwrap();
     let video = sdl_context.video().unwrap();
@@ -42,7 +45,7 @@ fn main() {
 
     let mut debugger = Debug::new();
     if debug {
-        debugger.print_status(&cpu);
+        debugger.print_status(&machine.cpu);
     }
     // cpu.print_boot();
     
@@ -50,7 +53,6 @@ fn main() {
     loop {
 
         // check breakpoints
-
         for event in event_pump.poll_event() {
             use sdl2::event::Event;
             use sdl2::keyboard::Keycode;
@@ -60,8 +62,8 @@ fn main() {
                     Some(key) => {
                         match key {
                             Keycode::Q => exit(0),
-                            Keycode::S => debugger.step(&mut cpu),
-                            Keycode::P => debugger.print_status(&mut cpu),
+                            Keycode::S => debugger.step(&mut machine),
+                            Keycode::P => debugger.print_status(&mut machine.cpu),
                             Keycode::C => debug = !debug,
                             _ => ()
                         }
@@ -75,12 +77,12 @@ fn main() {
         
         if !debug {
             // check breakpoints
-            if debugger.check_breakpoints(cpu.pc) {
+            if debugger.check_breakpoints(machine.cpu.pc) {
                 debug = !debug;
             } else {
-                cpu.cycle();
-                cpu.update_timers();
-                cpu.interrupts();
+                machine.step();
+                machine.cpu.update_timers();
+                machine.cpu.interrupts();
             }
         } else {
             'debug: loop {
@@ -88,7 +90,7 @@ fn main() {
                 let _ = stdout().flush();
                 let mut input = String::new();
                 stdin().read_line(&mut input).expect("Input invalid");
-                match debugger.parse_input(input.trim(), &cpu) {
+                match debugger.parse_input(input.trim(), &machine) {
                     Actions::BREAK => {
                         debug = !debug;
                         break;
@@ -97,7 +99,7 @@ fn main() {
                         exit(0);
                     },
                     Actions::STEP => {
-                        cpu.cycle ();
+                        machine.step();
                     },
                     Actions::NOOP => (),
                 };

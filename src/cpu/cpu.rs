@@ -5,6 +5,7 @@ use std::fmt;
 use cpu::mem::MMU;
 use cpu::gpu::GPU;
 use cpu::op::Opcode;
+use cpu::interconnect::Interconnect;
 
 #[allow(non_snake_case)]
 pub struct CPU {
@@ -73,9 +74,9 @@ impl CPU {
         cpu
     }
 
-    pub fn cycle(&mut self) -> u8 {
+    pub fn cycle(&mut self, interconnect: &mut Interconnect) -> u8 {
         self.get_opcode();
-        self.parse_opcode();
+        self.parse_opcode(interconnect);
         return 0;
     }
     
@@ -162,7 +163,7 @@ impl CPU {
         // println!("interrups");
     }
     
-    fn parse_opcode(&mut self) {
+    fn parse_opcode(&mut self, interconnect: &mut Interconnect) {
         match Opcode::parse(self.pc, self.opcode) {
         // match self.opcode {
             Opcode::DecA => {
@@ -281,7 +282,7 @@ impl CPU {
                 let location = (self.h as u16) << 8 | (self.l as u16);
                 // println!("loocation {:X}", location);
                 self.memory.load_value_u8(location as usize, self.a);
-
+                interconnect.write_word(location as u8, location);
                 // decrement HL
                 let hl = location.wrapping_sub(1);
                 // println!("HL {:X} decrement {:X}", HL, HL - 1);

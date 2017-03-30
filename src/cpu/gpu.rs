@@ -1,6 +1,7 @@
 #[allow(dead_code)]
 pub struct GPU {
     status: bool
+
 }
 
 #[allow(dead_code)]
@@ -14,5 +15,11 @@ impl GPU {
 
     pub fn status(&self) -> bool {
         self.status
+    }
+
+    
+    
+    pub fn step(&self) {
+        
     }
 }
