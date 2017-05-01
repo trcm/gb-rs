@@ -338,8 +338,26 @@ impl CPU {
                 self.step();
                 self.step();
             },
+            Opcode::IncBC => {
+                let mut bc = get_reg16!(self; b, c);
+                bc = bc.wrapping_add(1);
+                self.b = (bc >> 8) as u8;
+                self.c = (bc & 0xFF) as u8;
+                self.pc += 1;
+                self.step();
+                self.step();
+            },
+            Opcode::DecBC => {
+                let mut bc = get_reg16!(self; b, c);
+                bc = bc.wrapping_sub(1);
+                self.b = (bc >> 8) as u8;
+                self.c = (bc & 0xFF) as u8;
+                self.pc += 1;
+                self.step();
+                self.step();
+            },
             Opcode::LdA => { // ld a d8
-                let val: u8 = self.read_byte(1);
+                let val = self.memory.read_value_u8((self.pc + 1) as usize);
                 self.a = val;
                 self.pc += 2;
             }
@@ -406,10 +424,21 @@ impl CPU {
                 let second = self.memory.read_value_u8((self.sp + 1) as usize);
                 let location = (second as u16) << 8 | first as u16;
                 self.pc = first as u16;
+                self.sp = self.sp.wrapping_add(2);
                 self.step();
                 self.step();
                 self.step();
                 self.step();
+            },
+            Opcode::RetNZ => {
+                if self.C == 0 {
+                    let first = self.memory.read_value_u8(self.sp as usize);
+                    let second = self.memory.read_value_u8((self.sp + 1) as usize);
+                    let location = (second as u16) << 8 | first as u16;
+                    self.pc = first as u16;
+                } else {
+
+                }
             },
             Opcode::LdC => { // LD C, d8
                 let val: u8 = self.read_byte(1);
@@ -520,7 +549,9 @@ impl CPU {
                     self.N = 1;
                 }
                 // TODO - CHECK FOR CARRY 
-                
+                if self.b > self.a {
+                    self.C = 1;
+                }
                 self.step();
                 self.pc += 1;
             },
@@ -555,7 +586,48 @@ impl CPU {
             },
             Opcode::IncE => {
                 inc_reg!(self; e);
-            }
+            },
+            Opcode::LdAB => {
+                self.a = self.b;
+                self.step();
+                self.pc += 1;
+            },
+            Opcode::LdBCA => {
+                let address = get_reg16!(self; b, c);
+                self.memory.load_value_u8(address as usize, self.a);
+                self.step();
+                self.step();
+                self.pc += 1;
+            },
+            Opcode::AdcA => {
+                let value = self.memory.read_value_u8((self.pc + 1) as usize);
+                let addition = value + self.C;
+                self.N = 0;
+
+                if self.half_carry_add(value, addition) {
+                    self.H = 1;
+                }
+
+                if (value as u16).wrapping_add(addition as u16) > 0xFF {
+                    self.C = 1;
+                }
+                
+                self.a = value + addition;
+                if self.a == 0 {
+                    self.Z = 1;
+                }
+                self.pc += 2;
+            },
+            Opcode::LdHHL => {
+                let address = get_reg16!(self; h, l) as usize;
+                self.h = self.memory.read_value_u8(address);
+                self.step();
+                self.step();
+                self.pc += 1;
+            },
+            Opcode::CallZ => {
+                panic!("Call Z a16")
+            },
             _ => {
                 println!("Not implemented. Opcode: 0x{:02X} Mem: 0x{:02X}", self.opcode, self.pc);
                 panic!();

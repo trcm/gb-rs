@@ -1,9 +1,12 @@
 use std::fmt;
 
 const OPCODE_NO_OP: u8       = 0x00;
+const OPCODE_LD_BC_A: u8     = 0x02;
+const OPCODE_INC_BC: u8      = 0x03;
 const OPCODE_INC_B: u8       = 0x04;
 const OPCODE_DEC_B: u8       = 0x05;
 const OPCODE_LD_B: u8        = 0x06;
+const OPCODE_DEC_BC: u8      = 0x0B;
 const OPCODE_INC_C: u8       = 0x0C;
 const OPCODE_LD_DE: u8       = 0x11;
 const OPCODE_INC_DE: u8      = 0x13;
@@ -22,6 +25,7 @@ const OPCODE_LD_HL_ADD_A: u8 = 0x22;
 const OPCODE_LD_A_HL_ADD: u8 = 0x2A;
 const OPCODE_INC_HL: u8      = 0x23;
 const OPCODE_LD_A: u8        = 0x3E;
+const OPCODE_LD_A_B: u8      = 0x78;
 const OPCODE_LD_A_E: u8      = 0x7B;
 const OPCODE_LD_A_H: u8      = 0x7C;
 const OPCODE_XOR_A: u8       = 0xAF;
@@ -52,9 +56,11 @@ const OPCODE_LD_E: u8        = 0x1E;
 const OPCODE_SUB_B: u8       = 0x90;
 const OPCODE_LD_D: u8        = 0x16;
 const OPCODE_JR: u8          = 0x18;
+const OPCODE_RET_NZ: u8      = 0xC0;
 const OPCODE_JP: u8          = 0xC3;
-
-
+const OPCODE_ADC_A: u8       = 0xCE;
+const OPCODE_LD_H_HL: u8        = 0x66;
+const OPCODE_CALL_Z:u8       = 0xCC;
 
 const OPCODE_RET: u8         = 0xC9;
 
@@ -62,6 +68,8 @@ pub enum Opcode {
     NoOp,
     IncB,
     DecB,
+    IncBC,
+    DecBC,
     DecC,
     DecE,
     LdB,
@@ -112,6 +120,12 @@ pub enum Opcode {
     LdDEA,
     IncE,
     IncD,
+    LdAB,
+    RetNZ,
+    LdBCA,
+    AdcA,
+    LdHHL,
+    CallZ,
 }
 
 impl Opcode {
@@ -168,6 +182,14 @@ impl Opcode {
             OPCODE_LD_DE_A     => Opcode::LdDEA,
             OPCODE_INC_E       => Opcode::IncE,
             OPCODE_INC_D       => Opcode::IncD,
+            OPCODE_LD_A_B      => Opcode::LdAB,
+            OPCODE_RET_NZ      => Opcode::RetNZ,
+            OPCODE_LD_BC_A     => Opcode::LdBCA,
+            OPCODE_ADC_A       => Opcode::AdcA,
+            OPCODE_CALL_Z      => Opcode::CallZ,
+            OPCODE_DEC_BC      => Opcode::DecBC,
+            OPCODE_INC_BC      => Opcode::IncBC,
+            OPCODE_LD_H_HL     => Opcode::LdHHL,
             _                  => {
                 println!("Unimplemented opcode PC: 0x{:04X} OP: 0x{:02X}", address, bits);
                 panic!();
@@ -240,6 +262,14 @@ impl fmt::Display for Opcode {
             &Opcode::LdDEA    => "Ld (DE), A",
             &Opcode::IncE     => "INC E",
             &Opcode::IncD     => "INC D",
+            &Opcode::LdAB     => "LD A, B",
+            &Opcode::RetNZ    => "RET NZ",
+            &Opcode::LdBCA    => "LD (BC), A",
+            &Opcode::AdcA     => "ADC A, d8",
+            &Opcode::LdHHL    => "LD H, (HL)",
+            &Opcode::CallZ    => "CALL Z, a16",
+            &Opcode::DecBC    => "DEC BC",
+            &Opcode::IncBC    => "INC BC",
         };
         write!(f, "{}", code)
     }

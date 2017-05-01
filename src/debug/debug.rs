@@ -40,15 +40,31 @@ impl Debug {
        // disassemble 
         let mut pc = machine.cpu.pc as usize;
         let mut line_count = 0;
-        while line_count < 20 {
+        while line_count < 40 {
             // println!("0x{:02X}\t{}", pc, Opcode::parse(pc as u16, machine.cpu.memory.read_value_u8(pc)));
             match machine.cpu.memory.read_value_u8( pc ){
+                0x00 => {
+                    println!("0x{:02X}\tNOP", pc);
+                    pc += 1;
+                },
+                0x02 => {
+                    println!("0x{:02X}\tLD (BC), A", pc);
+                    pc += 1;
+                },
+                0x03 => {
+                    println!("0x{:02X}\tINC BC", pc);
+                    pc += 1;
+                },
                 0x04 => {
                     println!("0x{:02X}\tINC B", pc);
                     pc += 1;
                 }
                 0x05 => {
                     println!("0x{:02X}\tDEC B", pc);
+                    pc += 1;
+                },
+                0x0B => {
+                    println!("0x{:02X}\tDEC BC", pc);
                     pc += 1;
                 },
                 0x0D => {
@@ -158,7 +174,8 @@ impl Debug {
                     pc += 1;
                 },
                 0x3E => {
-                    println!("0x{:02X}\tLD A, 0x{:02X}", pc, machine.cpu.memory.read_value_u8( pc + 1 ));
+                    
+                    println!("0x{:02X}\tLD A, 0x{:02X}", pc, machine.cpu.memory.read_value_u8(( pc + 1) as usize ));
                     pc += 2;
                 },
                 0x4F => {
@@ -173,12 +190,20 @@ impl Debug {
                     println!("0x{:02X}\tLD D, A", pc);
                     pc += 1;
                 },
+                0x66 => {
+                    println!("0x{:02X}\tLD H, (HL)", pc);
+                    pc += 1;
+                },
                 0x7C => {
                     println!("0x{:02X}\tLD A, H", pc);
                     pc += 1;
                 }
                 0x77 => {
                     println!("0x{:02X}\tLD (HL), A", pc);
+                    pc += 1;
+                },
+                0x78 => {
+                    println!("0x{:02X}\tLD A, B", pc);
                     pc += 1;
                 },
                 0x7B => {
@@ -197,13 +222,17 @@ impl Debug {
                     println!("0x{:02X}\tCP (HL)", pc);
                     pc += 1;
                 },
+                0xC0 => {
+                    println!("0x{:02X}\tRET NZ", pc);
+                    pc += 1;
+                },
                 0xC1 => {
                     println!("0x{:02X}\tPOP BC", pc);
                     pc += 1;
                 },
                 0xC3 => {
                     let location = machine.cpu.read_word();
-                    println!("0x{:02X}\tLD A, 0x{:02X}", pc, location);
+                    println!("0x{:02X}\tJP 0x{:02X}", pc, location);
                     pc += 2;
                 },
                 0xC5 =>  {
@@ -218,9 +247,17 @@ impl Debug {
                     };
                     pc += 2;
                 },
+                0xCC => {
+                    println!("0x{:02X}\tCALL Z, 0x{:02X}{:X}", pc, machine.cpu.memory.read_value_u8( (pc + 2) as usize ), machine.cpu.memory.read_value_u8( (pc + 1) as usize ));
+                    pc += 3;
+                },
                 0xCD => {
                     println!("0x{:02X}\tCALL 0x{:02X}{:X}", pc, machine.cpu.memory.read_value_u8( (pc + 2) as usize ), machine.cpu.memory.read_value_u8( (pc + 1) as usize ));
                     pc += 3;
+                },
+                0xCE => {
+                    println!("0x{:02X}\tADC A, 0x{:02X}", pc, machine.cpu.memory.read_value_u8((pc + 1) as usize));
+                    pc += 2;
                 },
                 0xC9 => {
                     println!("0x{:02X}\tRET", pc);
