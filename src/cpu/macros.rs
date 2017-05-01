@@ -12,11 +12,35 @@ macro_rules! store_reg16 (($c:expr; $reg1:ident, $reg2:ident; $value:expr) => {
 });
 
 macro_rules! inc_reg (($c: expr; $reg: ident) => {
-    $c.$reg = $c.$reg.wrapping_add(1)
+    use cpu::macros::half_carry_add;
+    if half_carry_add($c.$reg, 1) {
+        $c.H = 1;
+    }
+    $c.$reg = $c.$reg.wrapping_add(1);
+    if $c.$reg == 0 {
+        $c.Z = 0;
+    }
+    $c.N = 0;
+    $c.step();
+    $c.pc += 1;
 });
 
 macro_rules! dec_reg (($c: expr; $reg: ident) => {
-    $c.$reg = $c.$reg.wrapping_sub(1)
+    use cpu::macros::half_carry_sub;
+
+    if half_carry_sub($c.$reg, 1) {
+        $c.H = 1;
+    }
+
+    $c.$reg = $c.$reg.wrapping_sub(1);
+
+    if $c.$reg == 0 {
+        $c.Z = 1;
+    }
+    $c.N = 1; // 
+    $c.pc += 1;
+    $c.step();
+
 });
 
 macro_rules! get_reg16 (($c:expr; $reg1:ident, $reg2:ident) => {
@@ -37,3 +61,15 @@ macro_rules! inc_reg16 (($c:expr; $reg1:ident, $reg2:ident) => {
 macro_rules! load_from_reg (($c:expr; $dst:ident, $src:ident) => {
     $c.$dst = $c.$src;
 });
+
+pub fn half_carry_add(initial: u8, value: u8) -> bool {
+    let a = initial & 0xF;
+    let b = value & 0xF;
+    return (a + b) & 0x10 == 0x10;
+}
+
+pub fn half_carry_sub(initial: u8, value: u8) -> bool {
+    let a = initial & 0xF;
+    let b = value & 0xF;
+    return (a.wrapping_sub(b)) & 0x10 == 0x10;
+}

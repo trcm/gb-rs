@@ -41,12 +41,24 @@ impl Debug {
         let mut pc = machine.cpu.pc as usize;
         let mut line_count = 0;
         while line_count < 20 {
-            println!("0x{:02X}\t{}", pc, Opcode::parse(pc as u16, machine.cpu.memory.read_value_u8(pc)));
+            // println!("0x{:02X}\t{}", pc, Opcode::parse(pc as u16, machine.cpu.memory.read_value_u8(pc)));
             match machine.cpu.memory.read_value_u8( pc ){
+                0x04 => {
+                    println!("0x{:02X}\tINC B", pc);
+                    pc += 1;
+                }
                 0x05 => {
                     println!("0x{:02X}\tDEC B", pc);
                     pc += 1;
-                }
+                },
+                0x0D => {
+                    println!("0x{:02X}\tDEC C", pc);
+                    pc += 1;
+                },
+                0x1D => {
+                    println!("0x{:02X}\tDEC E", pc);
+                    pc += 1;
+                },
                 0x06 => {
                     println!("0x{:02X}\tLD B, 0x{:02X}", pc, machine.cpu.memory.read_value_u8( pc + 1 ));
                     pc += 2;
@@ -67,13 +79,42 @@ impl Debug {
                     println!("0x{:02X}\tRLA", pc);
                     pc += 1;
                 }
+                0x12 => {
+                    println!("0x{:02X}\tLD (DE), A", pc);
+                    pc += 1;
+                }
                 0x13 => {
                     println!("0x{:02X}\tINC DE", pc);
                     pc += 1;
                 },
+                0x14 => {
+                    println!("0x{:02X}\tINC D", pc);
+                    pc += 1;
+                },
+                0x15 => {
+                    println!("0x{:02X}\tDEC D", pc);
+                    pc += 1;
+                },
+                0x16 => {
+                    println!("0x{:02X}\tLD D, 0x{:02X}", pc, machine.cpu.memory.read_value_u8( pc + 1 ));
+                    pc += 2;
+                },
+                0x18 => {
+                    let value =  machine.cpu.memory.read_value_u8( pc + 1 );
+                    println!("0x{:02X}\tJR 0x{:02X} 0x{:02X}", pc, (pc + value as usize), value);
+                    pc += 2;
+                },
                 0x1A => {
                     println!("0x{:02X}\tLD A, (DE)", pc);
                     pc += 1;
+                },
+                0x1C => {
+                    println!("0x{:02X}\tINC E", pc);
+                    pc += 1;
+                }
+                0x1E => {
+                    println!("0x{:02X}\tLD E, d8 0x{:02X}", pc, machine.cpu.memory.read_value_u8(pc + 1));
+                    pc += 2;
                 },
                 0x20 => {
                     // calculate jmp location
@@ -94,12 +135,20 @@ impl Debug {
                     println!("0x{:02X}\tINC HL", pc);
                     pc += 1;
                 },
+                0x24 => {
+                    println!("0x{:02X}\tINC H", pc);
+                    pc += 1;
+                },
                 0x28 => {
                     let mut location = LittleEndian::read_int(&[machine.cpu.memory.read_value_u8( (pc + 1) as usize )], 1);
                     location  = (((pc + 2) as i32) + (((location as u8) as i8) as i32)) as i64;
                     println!("0x{:02X}\tJR Z, r8 0x{:04X}", pc, location);
                     pc += 2;
                 },
+                0x2A => {
+                    println!("0x{:02X}\tLD A, (HL+)", pc);
+                    pc += 1;
+                }
                 0x31 => {
                     println!("0x{:02X}\tLD SP, 0x{:02X}{:X}", pc, machine.cpu.memory.read_value_u8( (pc + 2) as usize ), machine.cpu.memory.read_value_u8( (pc + 1) as usize ));
                     pc += 3;
@@ -115,6 +164,18 @@ impl Debug {
                 0x4F => {
                     println!("0x{:02X}\tLD C, A", pc);
                     pc += 1;
+                },
+                0x47 => {
+                    println!("0x{:02X}\tLD B, A", pc);
+                    pc += 1;
+                },
+                0x57 => {
+                    println!("0x{:02X}\tLD D, A", pc);
+                    pc += 1;
+                },
+                0x7C => {
+                    println!("0x{:02X}\tLD A, H", pc);
+                    pc += 1;
                 }
                 0x77 => {
                     println!("0x{:02X}\tLD (HL), A", pc);
@@ -123,14 +184,27 @@ impl Debug {
                 0x7B => {
                     println!("0x{:02X}\tLD A, E", pc);
                     pc += 1;
+                },
+                0x90 => {
+                    println!("0x{:02X}\tSUB B", pc);
+                    pc += 1;
                 }
                 0xAF => {
                     println!("0x{:02X}\tXOR A", pc);
                     pc += 1;
                 },
+                0xBE => {
+                    println!("0x{:02X}\tCP (HL)", pc);
+                    pc += 1;
+                },
                 0xC1 => {
                     println!("0x{:02X}\tPOP BC", pc);
                     pc += 1;
+                },
+                0xC3 => {
+                    let location = machine.cpu.read_word();
+                    println!("0x{:02X}\tLD A, 0x{:02X}", pc, location);
+                    pc += 2;
                 },
                 0xC5 =>  {
                     println!("0x{:02X}\tPUSH BC", pc);
@@ -156,6 +230,10 @@ impl Debug {
                     println!("0x{:02X}\tLDH ($FF00+0x{:02X}), A", pc, machine.cpu.memory.read_value_u8( pc + 1 ));
                     pc += 2;
                 },
+                0xF0 => {
+                    println!("0x{:02X}\tLDH A, ($FF00+0x{:02X})", pc, machine.cpu.memory.read_value_u8( pc + 1 ));
+                    pc += 2;
+                },
                 0xE2 => {
                     println!("0x{:02X}\tLD ($FF00+C), A", pc);
                     pc += 1;
@@ -168,7 +246,7 @@ impl Debug {
                     println!("0x{:02X}\tCP d8, (0x{:02X})", pc, machine.cpu.memory.read_value_u8(pc + 1));
                     pc += 2;
                     
-                }
+                },
                 _ => println!("Not disassembled 0x{:02X}, 0x{:02X}", pc, machine.cpu.memory.read_value_u8( pc )) 
             }
             line_count += 1;

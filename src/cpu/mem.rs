@@ -49,10 +49,10 @@ impl MMU {
     
     pub fn load_value_u8(&mut self, location: usize, value: u8) {
         if location == 0xFF40 {
-            panic!("LCD Control");
+            println!("LCD Control");
         }
         if location == 0xFF41 {
-            panic!("LCD STATUS");
+            println!("LCD STATUS");
         }
         self.boot[location] = value;
         // println!("Loaded\n Value: {:X} Location: {:X}, value: {:X}", value, location, self.boot[location]);

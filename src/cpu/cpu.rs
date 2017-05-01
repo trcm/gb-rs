@@ -166,33 +166,32 @@ impl CPU {
     fn parse_opcode(&mut self, interconnect: &mut Interconnect) {
         match Opcode::parse(self.pc, self.opcode) {
         // match self.opcode {
-            Opcode::DecA => {
-                if self.half_carry_sub(self.a, 1) {
-                    self.H = 1;
-                }
-                self.a = self.a.wrapping_sub(1);
-
-                if self.a == 0 {
-                    self.Z = 1;
-                }
-                self.N = 1; // 
+            Opcode::NoOp => {
                 self.pc += 1;
-                self.step();
+            }
+            Opcode::IncB => {
+                inc_reg!(self; b);
+            },
+            Opcode::DecA => {
+                dec_reg!(self; a);
             }
             Opcode::DecB => {
-            // 0x05 => { // DEC B 
-                if self.half_carry_sub(self.b, 1) {
-                    self.H = 1;
-                }
-                self.b = self.b.wrapping_sub(1);
-
-                if self.b == 0 {
-                    self.Z = 1;
-                }
-                println!("{} {}", self.b, self.Z);
-                self.N = 1; // 
-                self.pc += 1;
-                self.step();
+                dec_reg!(self; b);
+            },
+            Opcode::DecC => {
+                dec_reg!(self; c);
+            },
+            Opcode::IncD => {
+                inc_reg!(self; d);
+            },
+            Opcode::DecD => {
+                dec_reg!(self; d);
+            },
+            Opcode::DecE => {
+                dec_reg!(self; e);
+            },
+            Opcode::IncH => {
+                inc_reg!(self; h);
             },
             Opcode::LdB => {
             // 0x06 => { // LD b, d8
@@ -203,18 +202,15 @@ impl CPU {
                 self.step();
                 self.step();
             },
+            Opcode::LdD => { // 0x16 LD D, d8
+                let value = self.memory.read_value_u8((self.pc + 1) as usize);
+                store_reg!(self; d; value);
+                self.pc += 2;
+                self.step();
+                self.step();
+            }
             Opcode::IncC => { // INC C
-                println!("INC C");
-                self.c += 1;
-                if self.half_carry_add(self.c, 1) {
-                    println!("INC C HALF CARRY");
-                    self.H = 1;
-                }
-                if self.c & 0xFF == 0 {
-                    self.Z = 1;
-                }
-                self.N = 0;
-                self.pc += 1;
+                inc_reg!(self; c);
             },
             Opcode::IncDE => { // INC DE
                 let value = inc_reg16!(self; d, e);
@@ -225,7 +221,7 @@ impl CPU {
                 self.step();
             },
             Opcode::LdDE => {
-                println!("LD DE, d16");
+                // println!("LD DE, d16");
                 self.d = self.read_byte(2);
                 self.e = self.read_byte(1);
                 self.pc += 3;
@@ -236,10 +232,10 @@ impl CPU {
                 self.Z = 0;
             },
             Opcode::LdADE => { // LD A, (DE)
-                println!("LD A, (DE)");
+                // println!("LD A, (DE)");
                 let location = (self.d as u16) << 8 | self.e as u16;
                 // self.a = self.memory.read_value_u8( location as usize );
-                println!("\n\n\n\n\n {:#X}", location);
+                // println!("\n\n\n\n\n {:#X}", location);
                 self.a = self.memory.read_value_u8( location as usize );
                 self.pc += 1;
                 // self.a = ;
@@ -255,6 +251,30 @@ impl CPU {
                     self.step();
                     self.step();
                 }
+            },
+					  Opcode::JRZ => {
+                // println!("{:#X}", self.pc );
+                // panic!();
+                let mut location = LittleEndian::read_int(&[self.memory.read_value_u8( (self.pc + 1) as usize )], 1);
+                if self.Z == 0 {
+
+                    location  = (((self.pc + 2) as i32) + (((location as u8) as i8) as i32)) as i64;
+                    self.pc = location as u16;
+                    self.step();
+                } else {
+                    self.pc += 2;
+                    self.step();
+                    self.step();
+                }
+            },
+            Opcode::Jr => {
+                let mut location = LittleEndian::read_int(&[self.memory.read_value_u8( (self.pc + 1) as usize )], 1);
+                location  = (((self.pc + 2) as i32) + (((location as u8) as i8) as i32)) as i64;
+                self.pc = location as u16;
+                
+                self.step();
+                self.step();
+                self.step();
             },
             Opcode::LdHL => { // LD HL, $aabb
                 store_reg16!(self; h, l; self.read_word());
@@ -297,6 +317,7 @@ impl CPU {
                 let location = (self.h as u16) << 8 | (self.l as u16);
                 // println!("loocation {:X}", location);
                 self.memory.load_value_u8(location as usize, self.a);
+                interconnect.write_word(self.a, location as u16);
 
                 // decrement HL
                 let hl = location.wrapping_add(1);
@@ -327,6 +348,11 @@ impl CPU {
                 self.step();
                 self.pc += 1;
             },
+            Opcode::LdAH => {
+                load_from_reg!(self; a, h);
+                self.step();
+                self.pc += 1;
+            }
             Opcode::XORA => { // XOR A set Z
                 println!("XOR A");
                 self.a ^= self.a;
@@ -351,7 +377,7 @@ impl CPU {
                 self.c = self.memory.read_value_u8(self.sp as usize);
                 self.sp += 2;
                 self.pc += 1;
-                println!("sp 0x{:02X}", self.sp);
+                // println!("sp 0x{:02X}", self.sp);
                 self.step();
                 self.step();
                 self.step();
@@ -360,18 +386,16 @@ impl CPU {
                 self.step();
                 self.sp -= 2;
                 self.memory.load_value_u8((self.sp + 1) as usize, self.b);
+                interconnect.write_word(self.b, (self.sp + 1) as u16);
                 self.memory.load_value_u8(self.sp as usize, self.c);
+                interconnect.write_word(self.c, (self.sp) as u16);
                 self.pc += 1;
-                println!("sp 0x{:02X}", self.sp);
+                // println!("sp 0x{:02X}", self.sp);
             },
             Opcode::CallNN => { // call nn
-                // push next location onto the stack
-                println!("PC 0x{:02X}, NEXT 0x{:02X}, 0x{:02X}", self.pc, self.pc + 3, self.pc + 4);
                 self.sp -= 2; // decrememnt stack pointer
                 self.memory.load_value_u8(self.sp as usize, (self.pc + 3) as u8); // put the next location on the stack
-                // self.memory.load_value_u8(self.sp as usize, (self.pc + 4) as u8); // put the next location on the stack
                 let location: u16 = (self.memory.read_value_u8( (self.pc + 2) as usize ) as u16) << 8 | (self.memory.read_value_u8( (self.pc + 1) as usize ) as u16);
-                println!("location {:#X}, SP {:#X}", location, self.sp);
                 self.pc = location;
                 self.step();
                 self.step();
@@ -381,8 +405,6 @@ impl CPU {
                 let first = self.memory.read_value_u8(self.sp as usize);
                 let second = self.memory.read_value_u8((self.sp + 1) as usize);
                 let location = (second as u16) << 8 | first as u16;
-                println!("sp 0x{:02X} 0x{:02X} 0x{:02X}, 0x{:02X}", self.sp, first, second, location);
-                println!("JUMPING TO 0x{:02X}", first);
                 self.pc = first as u16;
                 self.step();
                 self.step();
@@ -392,12 +414,16 @@ impl CPU {
             Opcode::LdC => { // LD C, d8
                 let val: u8 = self.read_byte(1);
                 self.c = val;
-                println!("HERE");
                 self.pc += 2;
             },
             Opcode::LdhA => { // LDH ($FF00 + n), A - load A into 0xFF00 + d8
                 let val: u8 = self.read_byte(1);
                 self.memory.load_value_u8((0xFF00 | val as u16) as usize, self.a);
+                self.pc += 2;
+            },
+            Opcode::LdHAA8 => {
+                let val: u8 = self.read_byte(1);
+                self.a = self.memory.read_value_u8((0xFF00 | val as u16) as usize);
                 self.pc += 2;
             },
             Opcode::LdCADDA => { // LD (0xFF00+C), A load A into location 0xFF00 + self.c
@@ -424,11 +450,31 @@ impl CPU {
                 }
 
                 self.N = 1;
-                println!("CP d8 {:X}, {:X}", self.a, value);
                 self.step();
                 self.step();
                 self.pc += 2;
+            },
+            Opcode::CpHL => {
+                let address = get_reg16!(self; h, l);
+                let imm = self.memory.read_value_u8(address as usize);
+                let value = self.a;
 
+                if value == imm {
+                    self.Z = 1;
+                }
+
+                if self.half_carry_sub(self.a, imm) {
+                    self.H = 1;
+                }
+
+                if self.a < imm {
+                   self.C = 1; 
+                }
+                
+                self.N =1;
+                self.step();
+                self.step();
+                self.pc += 1;
             },
             Opcode::Lda16A => { // LD (a16), A
                 let location = self.read_word();
@@ -440,6 +486,76 @@ impl CPU {
                 self.step();
                 self.step();
             },
+            Opcode::LdHA => {
+                self.h = self.a;
+                self.step();
+                self.pc += 1;
+            },
+            Opcode::LdDA => {
+                self.d = self.a;
+                self.step();
+                self.pc += 1;
+            },
+            Opcode::LdBA => {
+                self.b = self.a;
+                self.step();
+                self.pc += 1;
+            }
+            Opcode::LdE => {
+                let val = self.memory.read_value_u8((self.pc + 1) as usize);
+                self.e = val;
+                self.step();
+                self.step();
+                self.pc += 2;
+            },
+            Opcode::SubB => {
+                if self.half_carry_sub(self.a, self.b) {
+                    self.H = 1;
+                }
+                self.a = self.a.wrapping_sub(self.b);
+                if self.a == 0 {
+                    self.Z = 1;
+                }
+                if self.a < 0 {
+                    self.N = 1;
+                }
+                // TODO - CHECK FOR CARRY 
+                
+                self.step();
+                self.pc += 1;
+            },
+            Opcode::Jp => {
+                let location = self.read_word();
+                self.step();
+                self.step();
+                self.step();
+                self.pc = location;
+            },
+            Opcode::LdAHLADD => {
+                let mut hl = (self.h as u16) << 8 | (self.l as u16);
+                let value = self.memory.read_value_u8(hl as usize);
+                
+                self.a = value;
+
+                hl = hl.wrapping_add(1);
+
+                self.h = (hl >> 8) as u8;
+                self.l = (hl & 0xFF) as u8;
+                self.pc += 1;
+                self.step();
+                self.step();
+                
+            },
+            Opcode::LdDEA => { // LD (DE), A
+                let address = get_reg16!(self; d, e);
+                self.memory.load_value_u8(address as usize, self.a);
+                self.step();
+                self.step();
+                self.pc += 1;
+            },
+            Opcode::IncE => {
+                inc_reg!(self; e);
+            }
             _ => {
                 println!("Not implemented. Opcode: 0x{:02X} Mem: 0x{:02X}", self.opcode, self.pc);
                 panic!();

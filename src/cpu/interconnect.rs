@@ -38,11 +38,17 @@ impl Interconnect {
             0xE000 ... 0xFDFF => {	println!("Echo RAM  -  Reserved, Do Not Use") },
             0xFE00 ... 0xFE9F => {	println!("OAM  - Object Attribute Memory") },
             0xFEA0 ... 0xFEFF => {	println!("Unusable Memory") },
-            0xFF00 ... 0xFF7F => {	println!("Hardware I/O Registers") },
+            0xFF00 ... 0xFF7F => {
+                if location == 0xFF01 {
+                    println!("CONSOLE OUTPUT {}", value);
+                }
+                println!("Hardware I/O Registers")
+                    
+            },
             0xFF80 ... 0xFFFE => {	println!("Zero Page  127 bytes") },
             _ => { panic!("Trying to write to invalid memory location {}", location)}
         }
-        println!("\n\n\n\n\n\n\n\n\n\n\n\n");
+        // println!("\n\n\n\n\n\n\n\n\n\n\n\n");
     }
     
     pub fn step(&mut self) {

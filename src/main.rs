@@ -1,6 +1,7 @@
 extern crate bitflags;
 extern crate byteorder;
 extern crate sdl2;
+extern crate clap;
 
 use std::io::prelude::*;
 use std::io::{stdin, stdout};
@@ -11,6 +12,8 @@ use std::str::FromStr;
 mod cpu;
 mod debug;
 
+use clap::{Arg, App, SubCommand};
+
 use cpu::cpu::CPU;
 use cpu::interconnect::Interconnect;
 use cpu::gb::Gameboy;
@@ -20,10 +23,22 @@ use debug::debug::{Debug, Actions};
 
 fn main() {
 
-    let boot_path: String = match std::env::args().nth(1) {
-        Some(p) => p,
-        None => String::from_str("./roms/BOOT.bin").unwrap()
-    };
+    let matches = App::new("Gb-rs")
+        .version("0.1")
+        .about("Gameboy emu in Rust")
+        .arg(Arg::with_name("rom")
+             .short("r")
+             .long("rom")
+             .value_name("ROM")
+             .help("Sets the location of the current rom")
+             .takes_value(true))
+        .arg(Arg::with_name("debug")
+             .short("d")
+             .long("debug")
+             .help("Sets the debug value, if set it will start the debugger"))
+        .get_matches();
+
+    let boot_path = matches.value_of("rom").unwrap_or("./roms/BOOT.bin");
 
     let boot = match File::open(boot_path) {
         Ok(f) => f,
@@ -31,7 +46,11 @@ fn main() {
     };
 
     //load boot rom
-    let mut debug: bool = true;
+    let mut debug: bool = match matches.occurrences_of("debug") {
+        0 => false,
+        _ => true,
+    };
+
     let mut machine = Gameboy::new(boot);
     // let mut cpu = CPU::new(boot);
 
