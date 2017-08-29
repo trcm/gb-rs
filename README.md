@@ -1,5 +1,11 @@
 # Gb-rs
 
+# This repo is dead.
+
+In the process of writing this emulator I learned a lot about writing Rust and structuring larger Rust projects.  After some time of I've decided to cease any work on this at this time.  I do plan on starting a new rust emulator project targeting another CPU to learn from the mistakes I made with this project.
+
+# Original Readme
+
 Gb-rs is my attempt at writing a gameboy emulator in Rust.
 
 I'd like to give credit to [ mehcode ]( https://github.com/mehcode ) for his 
